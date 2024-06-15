@@ -1,4 +1,4 @@
-//credis: galencolin
+//credits: galencolin
 template <typename num_t> 
 struct segtree {
   int n, depth;
