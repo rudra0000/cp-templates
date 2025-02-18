@@ -1,4 +1,3 @@
-//credits: galencolin
 template <typename num_t> 
 struct segtree {
   int n, depth;
@@ -68,4 +67,25 @@ struct segtree {
 
     lazy[i] = num_t();
   }
+  void assign(int idx, int l, int r, int pos, num_t v) {
+    eval_lazy(idx, l, r);  // Ensure previous updates are applied
+    
+    if (l == r) {  // Leaf node
+        tree[idx] = v;
+        return;
+    }
+    
+    int mid = (l + r) / 2;
+    if (pos <= mid)
+        assign(2 * idx + 1, l, mid, pos, v);
+    else
+        assign(2 * idx + 2, mid + 1, r, pos, v);
+
+    tree[idx] = tree[2 * idx + 1].op(tree[2 * idx + 2]);  // Merge the results
+}
+
+void assign(int pos, num_t v) {
+    assign(0, 0, n - 1, pos, v);
+}
+
 };
