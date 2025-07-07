@@ -1,91 +1,120 @@
-template <typename num_t> 
-struct segtree {
-  int n, depth;
-  vector<num_t> tree, lazy;
+struct LazySeg {
+    struct F { // Lazy update
+        int inc = 0;
+        F() {}
+        F(int x) { inc = x; }
+        F& operator*=(const F& a) {
+            inc += a.inc;
+            return *this;
+        }
+    };
+    vector<F> lazy;
 
-  void init(vector<int>& arr) {
-    n = arr.size();
-    int s=arr.size();
-    tree = vector<num_t>(4 * s, 0);
-    lazy = vector<num_t>(4 * s, 0);
-    init(0, 0, n - 1, arr);
-  }
+    struct T { // Data stored for each interval
+        int sz = 1, mn = INT_MAX, sum = 0, mx = INT_MIN;
+        int ind = -1;
+        T() {}
+        T(int x) {
+            sum = x;
+            mx = x;
+            mn = x;
+        }
 
-  num_t init(int i, int l, int r, vector<int>& arr) {
-    if (l == r) return tree[i] = arr[l];
+        friend T operator+(const T& a, const T& b) { // Combine two nodes
+            T res;
+            res.sz = a.sz + b.sz;
+            res.mn = min(a.mn, b.mn);
+            res.mx = max(a.mx, b.mx);
+            res.ind = (a.mx > b.mx ? a.ind : b.ind);
+            res.sum = a.sum + b.sum;
+            return res;
+        }
 
-    int mid = (l + r) / 2;
-    num_t a = init(2 * i + 1, l, mid, arr),
-          b = init(2 * i + 2, mid + 1, r, arr);
-    return tree[i] = a.op(b);
-  }
+        T& operator*=(const F& a) {
+            mx += a.inc;
+            mn += a.inc;
+            sum += (long long)sz * a.inc;
+            return *this;
+        }
+    };
+    vector<T> seg;
+    int SZ = 1;
 
-  void update(int l, int r, num_t v) {
-    if (l > r) return;
-    update(0, 0, n - 1, l, r, v);
-  }
-
-  num_t update(int i, int tl, int tr, int ql, int qr, num_t v) {
-    eval_lazy(i, tl, tr);
-    
-    if (tr < ql || qr < tl) return tree[i];
-    if (ql <= tl && tr <= qr) {
-      lazy[i] = lazy[i].val + v.val;
-      eval_lazy(i, tl, tr);
-      return tree[i];
-    }
-    
-    int mid = (tl + tr) / 2;
-    num_t a = update(2 * i + 1, tl, mid, ql, qr, v),
-          b = update(2 * i + 2, mid + 1, tr, ql, qr, v);
-    return tree[i] = a.op(b);
-  }
-
-  num_t query(int l, int r) {
-    if (l > r) return num_t::null_v;
-    return query(0, 0, n-1, l, r);
-  }
-
-  num_t query(int i, int tl, int tr, int ql, int qr) {
-    eval_lazy(i, tl, tr);
-    
-    if (ql <= tl && tr <= qr) return tree[i];
-    if (tr < ql || qr < tl) return num_t::null_v;
-
-    int mid = (tl + tr) / 2;
-    num_t a = query(2 * i + 1, tl, mid, ql, qr),
-          b = query(2 * i + 2, mid + 1, tr, ql, qr);
-    return a.op(b);
-  }
-
-  void eval_lazy(int i, int l, int r) {
-    tree[i] = tree[i].lazy_op(lazy[i], (r - l + 1));
-    if (l != r) {
-      lazy[i * 2 + 1] = lazy[i].val + lazy[i * 2 + 1].val;
-      lazy[i * 2 + 2] = lazy[i].val + lazy[i * 2 + 2].val;
+    // Initialize internal arrays with appropriate size
+    void init(int n) {
+        while (SZ < n) SZ *= 2;
+        seg.assign(2 * SZ, T());
+        lazy.assign(2 * SZ, F());
     }
 
-    lazy[i] = num_t();
-  }
-  void assign(int idx, int l, int r, int pos, num_t v) {
-    eval_lazy(idx, l, r);  // Ensure previous updates are applied
-    
-    if (l == r) {  // Leaf node
-        tree[idx] = v;
-        return;
+    // Build from input vector A in O(N)
+    void build(const vector<int>& A) {
+        int n = A.size();
+        init(n); // sets SZ and resizes seg and lazy
+        // Set leaves
+        for (int i = 0; i < n; ++i) {
+            seg[SZ + i] = T(A[i]);
+            seg[SZ + i].ind = i; // Keep track of index if needed
+        }
+        for (int i = n; i < SZ; ++i) {
+            seg[SZ + i] = T(); // Fill unused leaves with default T
+        }
+        // Build parents bottom-up
+        for (int i = SZ - 1; i >= 1; --i) {
+            seg[i] = seg[2 * i] + seg[2 * i + 1];
+        }
     }
-    
-    int mid = (l + r) / 2;
-    if (pos <= mid)
-        assign(2 * idx + 1, l, mid, pos, v);
-    else
-        assign(2 * idx + 2, mid + 1, r, pos, v);
 
-    tree[idx] = tree[2 * idx + 1].op(tree[2 * idx + 2]);  // Merge the results
-}
+    // Direct point set, O(log N)
+    void set(int idx, int val) {
+        idx += SZ;
+        seg[idx] = T(val);
+        seg[idx].ind = idx - SZ;
+        for (idx /= 2; idx > 0; idx /= 2) {
+            seg[idx] = seg[2 * idx] + seg[2 * idx + 1];
+        }
+    }
 
-void assign(int pos, num_t v) {
-    assign(0, 0, n - 1, pos, v);
-}
+    void push(int ind) {
+        seg[ind] *= lazy[ind];
+        if (ind < SZ) {
+            lazy[2 * ind] *= lazy[ind];
+            lazy[2 * ind + 1] *= lazy[ind];
+        }
+        lazy[ind] = F();
+    }
 
+    void pull(int ind) {
+        seg[ind] = seg[2 * ind] + seg[2 * ind + 1];
+    }
+
+    void upd(int lo, int hi, F inc, int ind, int L, int R) {
+        push(ind);
+        if (hi < L || R < lo) return;
+        if (lo <= L && R <= hi) {
+            lazy[ind] = inc;
+            push(ind);
+            return;
+        }
+        int M = (L + R) / 2;
+        upd(lo, hi, inc, 2 * ind, L, M);
+        upd(lo, hi, inc, 2 * ind + 1, M + 1, R);
+        pull(ind);
+    }
+
+    void upd(int lo, int hi, int inc) {
+        upd(lo, hi, F(inc), 1, 0, SZ - 1);
+    }
+
+    T query(int lo, int hi, int ind, int L, int R) {
+        push(ind);
+        if (lo > R || L > hi) return T();
+        if (lo <= L && R <= hi) return seg[ind];
+        int M = (L + R) / 2;
+        return query(lo, hi, 2 * ind, L, M) + query(lo, hi, 2 * ind + 1, M + 1, R);
+    }
+
+    T query(int lo, int hi) {
+        return query(lo, hi, 1, 0, SZ - 1);
+    }
 };
