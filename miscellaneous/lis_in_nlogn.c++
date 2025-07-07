@@ -35,8 +35,6 @@ vector<int> lis(vector<int> const& a) {
                 lis[i]=max(lis[i],l);
             }else if(d[l-1]==a[i]){
                 lis[i]=max(lis[i],l-1);
-            }else if(d[l-1]<a[i]){
-                lis[i]=max(lis[i],l);
             }
         }
         return lis;
