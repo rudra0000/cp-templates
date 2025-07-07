@@ -20,3 +20,24 @@ int lis(vector<int> const& a) {
     }
     return ans;
 }
+
+vector<int> lis(vector<int> const& a) {
+        int n = a.size();
+        const int INF = 1e9;
+        vector<int> d(n+1, INF);
+        vector<int> lis(n,1);
+        d[0] = -INF;
+
+        for (int i = 0; i < n; i++) {
+            int l = upper_bound(d.begin(), d.end(), a[i]) - d.begin();
+            if (d[l-1] < a[i] && a[i] < d[l]){
+                d[l] = a[i];
+                lis[i]=max(lis[i],l);
+            }else if(d[l-1]==a[i]){
+                lis[i]=max(lis[i],l-1);
+            }else if(d[l-1]<a[i]){
+                lis[i]=max(lis[i],l);
+            }
+        }
+        return lis;
+    } 
