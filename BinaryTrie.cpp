@@ -42,6 +42,7 @@ struct Trie {
                 node = ch[node][b];
             }
         }
-        return {res, val};
+        return {res, val}; // res-> the minimum XOR value found with x
+        // val-> the actual number from the trie that produces this minimum XOR
     }
 };
