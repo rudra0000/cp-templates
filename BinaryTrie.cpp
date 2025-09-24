@@ -45,4 +45,22 @@ struct Trie {
         return {res, val}; // res-> the minimum XOR value found with x
         // val-> the actual number from the trie that produces this minimum XOR
     }
+    array<int, 2> query_max(int x) {
+        int node = 0, res = 0, val = 0;
+        for (int bit = 30; bit >= 0; --bit) {
+            int b = (x >> bit) & 1;
+            if (ch[node][1 ^ b] != -1 && ct[ch[node][1 ^ b]] > 0) {
+                // go opposite to maximize XOR
+                res += 1 << bit;
+                val += (1 ^ b) << bit;
+                node = ch[node][1 ^ b];
+            } else {
+                // must go same
+                val += b << bit;
+                node = ch[node][b];
+            }
+        }
+        return {res, val}; // res -> maximum XOR value, val -> number in trie producing it
+    }
+
 };
