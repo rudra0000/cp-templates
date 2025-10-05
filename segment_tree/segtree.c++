@@ -1,26 +1,40 @@
 struct LazySeg {
-    struct F { // Lazy update
+    struct F { // Lazy update: supports both set and add
+        bool has_set = false;
+        int set_val = 0;
         int inc = 0;
+
         F() {}
-        F(int x) { inc = x; }
+        F(int add) { inc = add; }
+        static F set_op(int val) {
+            F f;
+            f.has_set = true;
+            f.set_val = val;
+            return f;
+        }
+
         F& operator*=(const F& a) {
-            inc += a.inc;
+            if (a.has_set) {
+                has_set = true;
+                set_val = a.set_val;
+                inc = a.inc; // add after set
+            } else {
+                inc += a.inc;
+            }
             return *this;
         }
     };
-    vector<F> lazy;
 
-    struct T { // Data stored for each interval
-        int sz = 1, mn = INT_MAX, sum = 0, mx = INT_MIN;
+    struct T {
+        int sz = 1, mn = INT_MAX, mx = INT_MIN, sum = 0;
         int ind = -1;
+
         T() {}
         T(int x) {
-            sum = x;
-            mx = x;
-            mn = x;
+            mn = mx = sum = x;
         }
 
-        friend T operator+(const T& a, const T& b) { // Combine two nodes
+        friend T operator+(const T& a, const T& b) {
             T res;
             res.sz = a.sz + b.sz;
             res.mn = min(a.mn, b.mn);
@@ -31,48 +45,39 @@ struct LazySeg {
         }
 
         T& operator*=(const F& a) {
-            mx += a.inc;
-            mn += a.inc;
-            sum += (long long)sz * a.inc;
+            if (a.has_set) {
+                mn = mx = a.set_val + a.inc;
+                sum = (long long)sz * (a.set_val + a.inc);
+            } else if (a.inc) {
+                mn += a.inc;
+                mx += a.inc;
+                sum += (long long)sz * a.inc;
+            }
             return *this;
         }
     };
+
     vector<T> seg;
+    vector<F> lazy;
     int SZ = 1;
 
-    // Initialize internal arrays with appropriate size
     void init(int n) {
         while (SZ < n) SZ *= 2;
         seg.assign(2 * SZ, T());
         lazy.assign(2 * SZ, F());
     }
 
-    // Build from input vector A in O(N)
     void build(const vector<int>& A) {
         int n = A.size();
-        init(n); // sets SZ and resizes seg and lazy
-        // Set leaves
+        init(n);
         for (int i = 0; i < n; ++i) {
             seg[SZ + i] = T(A[i]);
-            seg[SZ + i].ind = i; // Keep track of index if needed
+            seg[SZ + i].ind = i;
         }
-        for (int i = n; i < SZ; ++i) {
-            seg[SZ + i] = T(); // Fill unused leaves with default T
-        }
-        // Build parents bottom-up
-        for (int i = SZ - 1; i >= 1; --i) {
+        for (int i = n; i < SZ; ++i)
+            seg[SZ + i] = T();
+        for (int i = SZ - 1; i >= 1; --i)
             seg[i] = seg[2 * i] + seg[2 * i + 1];
-        }
-    }
-
-    // Direct point set, O(log N)
-    void set(int idx, int val) {
-        idx += SZ;
-        seg[idx] = T(val);
-        seg[idx].ind = idx - SZ;
-        for (idx /= 2; idx > 0; idx /= 2) {
-            seg[idx] = seg[2 * idx] + seg[2 * idx + 1];
-        }
     }
 
     void push(int ind) {
@@ -88,33 +93,30 @@ struct LazySeg {
         seg[ind] = seg[2 * ind] + seg[2 * ind + 1];
     }
 
-    void upd(int lo, int hi, F inc, int ind, int L, int R) {
+    void upd(int lo, int hi, const F& val, int ind, int L, int R) {
         push(ind);
         if (hi < L || R < lo) return;
         if (lo <= L && R <= hi) {
-            lazy[ind] = inc;
+            lazy[ind] *= val;
             push(ind);
             return;
         }
         int M = (L + R) / 2;
-        upd(lo, hi, inc, 2 * ind, L, M);
-        upd(lo, hi, inc, 2 * ind + 1, M + 1, R);
+        upd(lo, hi, val, 2 * ind, L, M);
+        upd(lo, hi, val, 2 * ind + 1, M + 1, R);
         pull(ind);
     }
 
-    void upd(int lo, int hi, int inc) {
-        upd(lo, hi, F(inc), 1, 0, SZ - 1);
-    }
+    void range_add(int lo, int hi, int v) { upd(lo, hi, F(v), 1, 0, SZ - 1); }
+    void range_set(int lo, int hi, int v) { upd(lo, hi, F::set_op(v), 1, 0, SZ - 1); }
 
     T query(int lo, int hi, int ind, int L, int R) {
         push(ind);
-        if (lo > R || L > hi) return T();
+        if (hi < L || R < lo) return T();
         if (lo <= L && R <= hi) return seg[ind];
         int M = (L + R) / 2;
         return query(lo, hi, 2 * ind, L, M) + query(lo, hi, 2 * ind + 1, M + 1, R);
     }
 
-    T query(int lo, int hi) {
-        return query(lo, hi, 1, 0, SZ - 1);
-    }
+    T query(int lo, int hi) { return query(lo, hi, 1, 0, SZ - 1); }
 };
