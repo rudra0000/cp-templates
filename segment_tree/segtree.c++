@@ -6,14 +6,14 @@ struct LazySeg {
 
         F() {}
         F(int add) { inc = add; }
-        static F set_op(int val) {
+        static F set_op(int val) { //define lazy structure
             F f;
             f.has_set = true;
             f.set_val = val;
             return f;
         }
 
-        F& operator*=(const F& a) {
+        F& operator*=(const F& a) { //combine two lazy ops
             if (a.has_set) {
                 has_set = true;
                 set_val = a.set_val;
@@ -26,7 +26,7 @@ struct LazySeg {
     };
 
     struct T {
-        int sz = 1, mn = INT_MAX, mx = INT_MIN, sum = 0;
+        int sz = 1, mn = INT_MAX, mx = INT_MIN, sum = 0;     //dont remove ind
         int ind = -1;
 
         T() {}
@@ -34,7 +34,7 @@ struct LazySeg {
             mn = mx = sum = x;
         }
 
-        friend T operator+(const T& a, const T& b) {
+        friend T operator+(const T& a, const T& b) {  //logic for merging two nodes of segment tree
             T res;
             res.sz = a.sz + b.sz;
             res.mn = min(a.mn, b.mn);
@@ -44,7 +44,7 @@ struct LazySeg {
             return res;
         }
 
-        T& operator*=(const F& a) {
+        T& operator*=(const F& a) {      //combine lazy op with the current node
             if (a.has_set) {
                 mn = mx = a.set_val + a.inc;
                 sum = (long long)sz * (a.set_val + a.inc);
@@ -107,8 +107,8 @@ struct LazySeg {
         pull(ind);
     }
 
-    void range_add(int lo, int hi, int v) { upd(lo, hi, F(v), 1, 0, SZ - 1); }
-    void range_set(int lo, int hi, int v) { upd(lo, hi, F::set_op(v), 1, 0, SZ - 1); }
+    // void range_add(int lo, int hi, int v) { upd(lo, hi, F(v), 1, 0, SZ - 1); }
+    // void range_set(int lo, int hi, int v) { upd(lo, hi, F::set_op(v), 1, 0, SZ - 1); }
 
     T query(int lo, int hi, int ind, int L, int R) {
         push(ind);
