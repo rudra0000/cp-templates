@@ -26,12 +26,13 @@ struct LazySeg {
     };
 
     struct T {
-        int sz = 1, mn = INT_MAX, mx = INT_MIN, sum = 0;     //dont remove ind
+        int sz = 0, mn = INT_MAX, mx = INT_MIN, sum = 0;     //dont remove ind
         int ind = -1;
 
         T() {}
         T(int x) {
             mn = mx = sum = x;
+            sz=1;
         }
 
         friend T operator+(const T& a, const T& b) {  //logic for merging two nodes of segment tree
